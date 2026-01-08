@@ -1,2 +1,2 @@
 # Heisenberg Exact Diagonalization
-This is a small project for the Interaction and Correlations in Condensed Matter course at the University of Bologna. The aim is to implement exact diagonalization for the 1D spin-1/2 Heisenberg model using the Lanczos algorithm.
+This is a small project for the Interactions and Correlations in Condensed Matter course at the University of Bologna. The aim is to implement exact diagonalization for the 1D spin-1/2 Heisenberg model using the Lanczos algorithm.
