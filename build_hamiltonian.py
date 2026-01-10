@@ -6,7 +6,7 @@ def get_bit(n: int, i: int):
   """
   return n >> i & 1
 
-def flip_bits(n: int, i: int, j:int):
+def flip_bits(n: int, i: int, j: int):
   """
   Flip (not switch) the ith and jth bits of an int n
   """
@@ -25,14 +25,18 @@ def build_hamiltonian(N: int, J: float):
   """
   state_n = 2**N
   H = np.zeros((state_n, state_n))
-  for s in range(0, state_n-1):
-    for i in range(0, N-1):
-      j = (i+1)/N # rightward nearest neighbor of i, with periodicity enforced
+  for s in range(0, state_n):
+    for i in range(0, N):
+      j = (i+1)%N # rightward nearest neighbor of i, with periodicity enforced
       if get_bit(s,i) == get_bit(s,j): 
         H[s,s] += .25
       else:
         H[s,s] += -.25
         sp = flip_bits(s,i,j)
         H[s,sp] = .5
+    print(f'Calculated row {s}')
 
-  return
+  return H
+
+ham = build_hamiltonian(3, 1.)
+print(ham)
