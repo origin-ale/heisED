@@ -34,9 +34,5 @@ def build_hamiltonian(N: int, J: float):
         H[s,s] += -.25
         sp = flip_bits(s,i,j)
         H[s,sp] = .5
-    print(f'Calculated row {s}')
-
   return H
 
-ham = build_hamiltonian(3, 1.)
-print(ham)
