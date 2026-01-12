@@ -1,5 +1,8 @@
 # Heisenberg Exact Diagonalization
 This is a small project for the Interactions and Correlations in Condensed Matter course at the University of Bologna. The aim is to implement exact diagonalization for the 1D spin-1/2 Heisenberg model using the Lanczos algorithm.
 
+> [!ALERT]
+> Note that the program is still incomplete and works incorrectly!
+
 References: 
 - A. W. Sandvik, AIP Conf. Proc. 1297, 135 (2010)

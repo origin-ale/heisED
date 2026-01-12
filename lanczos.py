@@ -2,6 +2,7 @@ import numpy as np
 from numpy.random import default_rng
 
 from scipy.linalg import norm
+from scipy.linalg import eigh_tridiagonal
 
 from build_hamiltonian import build_hamiltonian
 
@@ -37,12 +38,6 @@ def save_nonzero(H: np.ndarray):
         nze_values.append(float(H[a,b])) # Convert from np.float64 for nicer printing in debug
     nonzero_elements.append(nze_a)
   return nonzero_elements, nze_locations, nze_values
-
-def spinH_action(H: np.ndarray, psi: np.ndarray):
-  """
-  Compute action of H on psi (overloads efficient version)
-  """
-  return H @ psi # Placeholder basic matrix multiplication
 
 def spinH_action(psi: np.ndarray, nonzero_elements: list, nze_locations: list, nze_values: list):
   """
@@ -93,7 +88,8 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
   phi.append(new_phi)
   norm.append(new_norm)
   
-  latest_Hphi = spinH_action(H, phi[0])
+  compact_H = save_nonzero(H)
+  latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
   a.append(phi[0] @ latest_Hphi)
   unnorm_new_phi = latest_Hphi - a[0]*phi[0]
   new_phi, new_norm = normalize(unnorm_new_phi)
@@ -102,7 +98,7 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
 
   tridiag_size = min(max_size, N)
   for m in range(1, tridiag_size):
-    latest_Hphi = spinH_action(H, phi[m])
+    latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
     a.append(phi[m] @ latest_Hphi)
     unnorm_new_phi = latest_Hphi - a[m]*phi[m] - norm[m]*phi[m-1]
     new_phi, new_norm = normalize(unnorm_new_phi)
@@ -124,7 +120,7 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
 
 def test(H, compact_H):
   print(f'Hamiltonian is \n{H}')
-  
+
   successes = 0
   for test in range(0, 10):
     psi = default_rng().random(2**N)
@@ -137,13 +133,18 @@ def test(H, compact_H):
 
 np.set_printoptions(precision = 3, suppress = True)
 
-N = 3
-H = build_hamiltonian(N, 1.)
+N = 12
+J = 1.
+H = build_hamiltonian(N, J)
 
-compact_H = save_nonzero(H)
 # print(f'Compact H info: {compact_H}')
 
-test(H, compact_H)
+tridiag = spinH_lanczos(H)
 
-# tridiag = spinH_lanczos(H)
-# print(f'Tridiagonal Hamiltonian is \n{tridiag}')
+gs_energy = eigh_tridiagonal(tridiag.diagonal(), 
+                             tridiag.diagonal(offset=1), 
+                             eigvals_only=True, 
+                             select='i', 
+                             select_range=[0,0])
+
+print(f'Ground state energy for {N} spins in J={J} is {gs_energy[0]}')
