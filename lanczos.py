@@ -11,11 +11,66 @@ def normalize(v: np.ndarray):
   """
   return v/norm(v), norm(v)
 
+def save_nonzero(H: np.ndarray):
+  """
+  Input: one matrix H
+
+  Returns
+  ---
+  nonzero_elements : list of int
+    The number of nonzero elements in each row of H
+  nze_locations : list of int
+    The locations of nonzero elements in each row. First `nonzero_elements[0]` entries refer to row `0`, and so on
+  nze_values : list of float
+    The nonzero elements themselves
+  """
+  N = len(H)
+  nonzero_elements = [] # Number of nonzero elements in each row
+  nze_locations = [] # Locations of nonzero elements in each row
+  nze_values = [] # Values of each nonzero element
+  for a in range(0, N):
+    nze_a = 0
+    for b in range(0, N):
+      if H[a,b] != 0.:
+        nze_a += 1
+        nze_locations.append(b)
+        nze_values.append(float(H[a,b])) # Convert from np.float64 for nicer printing in debug
+    nonzero_elements.append(nze_a)
+  return nonzero_elements, nze_locations, nze_values
+
 def spinH_action(H: np.ndarray, psi: np.ndarray):
   """
-  Compute action of H on psi, optimized for spin hamiltonians which are sparse (Sandvik 2010 §4.2.3)
+  Compute action of H on psi (overloads efficient version)
   """
-  return H @ psi # placeholder basic matrix multiplication
+  return H @ psi # Placeholder basic matrix multiplication
+
+def spinH_action(psi: np.ndarray, nonzero_elements: list, nze_locations: list, nze_values: list):
+  """
+  Act with a spin hamiltonian given by compact information on a vector (Sandvik 2010 §4.2.3)
+
+  Parameters
+  ---
+  psi : np.ndarray
+    The vector to act on
+  nonzero_elements : list of int
+    The number of nonzero elements in each row of the spin hamiltonian
+  nze_locations : list of int
+    The locations of nonzero elements in each row. First `nonzero_elements[0]` entries refer to row `0`, and so on
+  nze_values : list of float
+    The nonzero elements themselves
+  """
+  N = len(nonzero_elements) # Number of rows in spin hamiltonian
+  Hpsi = np.zeros(N)
+  i = 0 # Tracker for position in nze_locations and nze_values
+  for a in range(0, N):
+    # print(f'----------\na = {a}')
+    for j in range(0, nonzero_elements[a]):
+      # print(f'i = {i}')
+      # print(f'nze_locations[i] = {nze_locations[i]}\nnze_values[i] = {nze_values[i]}')
+      Hpsi[nze_locations[i]] += nze_values[i]*psi[a]
+      Hpsi[a] += nze_values[i] * psi[nze_locations[i]]
+      i += 1
+  return Hpsi/2. # Correct for double counting
 
 def spinH_lanczos(H: np.ndarray, max_size = 100000):
   """
@@ -67,10 +122,28 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
   H_tridiag[tridiag_size-1,tridiag_size-1] = a[tridiag_size-1]
   return H_tridiag
 
+def test(H, compact_H):
+  print(f'Hamiltonian is \n{H}')
+  
+  successes = 0
+  for test in range(0, 10):
+    psi = default_rng().random(2**N)
+    Hpsi_efficient = spinH_action(psi, compact_H[0], compact_H[1], compact_H[2])
+    Hpsi_naive = H @ psi
+    print(f'''
+          Efficient: {Hpsi_efficient}
+          Naive:     {Hpsi_naive}''')
+  return
+
 np.set_printoptions(precision = 3, suppress = True)
 
-H = build_hamiltonian(2, 1.)
-print(f'Hamiltonian is \n{H}')
+N = 3
+H = build_hamiltonian(N, 1.)
 
-tridiag = spinH_lanczos(H)
-print(f'Tridiagonal Hamiltonian is \n{tridiag}')
+compact_H = save_nonzero(H)
+# print(f'Compact H info: {compact_H}')
+
+test(H, compact_H)
+
+# tridiag = spinH_lanczos(H)
+# print(f'Tridiagonal Hamiltonian is \n{tridiag}')
