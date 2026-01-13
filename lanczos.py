@@ -83,29 +83,34 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
   norm = [] # List of Lanczos vector norms
   a = [] # List of Lanczos a coefficients
   seed = 42
+  compact_H = save_nonzero(H)
 
+  """Initialize algorithm"""
   new_phi, new_norm = normalize(default_rng(seed).random(N)) # phi0 is a random normalized vector
   phi.append(new_phi)
   norm.append(new_norm)
-  
-  compact_H = save_nonzero(H)
   latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
   a.append(phi[0] @ latest_Hphi)
+
+  """Special case new = 1"""
   unnorm_new_phi = latest_Hphi - a[0]*phi[0]
   new_phi, new_norm = normalize(unnorm_new_phi)
   phi.append(new_phi)
   norm.append(new_norm)
+  latest_Hphi = spinH_action(phi[1], compact_H[0], compact_H[1], compact_H[2]) 
+  # this is technically a waste but it lets the loop start with 2 elements in everything 
+  a.append(phi[1] @ latest_Hphi)
 
+  """Main loop 2 <= new <= size-1"""
   tridiag_size = min(max_size, N)
-  for m in range(1, tridiag_size):
-    latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
-    a.append(phi[m] @ latest_Hphi)
-    unnorm_new_phi = latest_Hphi - a[m]*phi[m] - norm[m]*phi[m-1]
+  for m in range(2, tridiag_size+1):
+    latest_Hphi = spinH_action(phi[m-1], compact_H[0], compact_H[1], compact_H[2])
+    unnorm_new_phi = latest_Hphi - a[m-1]*phi[m-1] - norm[m-1]*phi[m-2]
     new_phi, new_norm = normalize(unnorm_new_phi)
     phi.append(new_phi)
     norm.append(new_norm)
-  phi.pop() # remove extra elements given by last iteration
-  norm.pop()
+    latest_Hphi = spinH_action(phi[m], compact_H[0], compact_H[1], compact_H[2]) 
+    a.append(phi[m] @ latest_Hphi)
 
   H_tridiag = np.zeros((tridiag_size, tridiag_size))
   H_tridiag[0,0] = a[0]
@@ -118,9 +123,9 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
   H_tridiag[tridiag_size-1,tridiag_size-1] = a[tridiag_size-1]
   return H_tridiag
 
-def test(H, compact_H):
+def test_spinH_action(H, compact_H):
   print(f'Hamiltonian is \n{H}')
-
+  N = len(H)
   successes = 0
   for test in range(0, 10):
     psi = default_rng().random(2**N)
@@ -130,21 +135,3 @@ def test(H, compact_H):
           Efficient: {Hpsi_efficient}
           Naive:     {Hpsi_naive}''')
   return
-
-np.set_printoptions(precision = 3, suppress = True)
-
-N = 12
-J = 1.
-H = build_hamiltonian(N, J)
-
-# print(f'Compact H info: {compact_H}')
-
-tridiag = spinH_lanczos(H)
-
-gs_energy = eigh_tridiagonal(tridiag.diagonal(), 
-                             tridiag.diagonal(offset=1), 
-                             eigvals_only=True, 
-                             select='i', 
-                             select_range=[0,0])
-
-print(f'Ground state energy for {N} spins in J={J} is {gs_energy[0]}')
