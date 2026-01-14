@@ -4,6 +4,8 @@ from numpy.random import default_rng
 from scipy.linalg import norm
 from scipy.linalg import eigh_tridiagonal
 
+import mytiming as mt
+
 from build_hamiltonian import build_hamiltonian
 
 def normalize(v: np.ndarray):
@@ -67,7 +69,7 @@ def spinH_action(psi: np.ndarray, nonzero_elements: list, nze_locations: list, n
       i += 1
   return Hpsi/2. # Correct for double counting
 
-def spinH_lanczos(H: np.ndarray, max_size = 100000):
+def spinH_lanczos(H: np.ndarray, max_size = 100000, reortho = False):
   """
   Tridiagonalize a spin hamiltonian using the Lanczos algorithm (Sandvik 2010 §4.2.3)
 
@@ -77,13 +79,18 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
     The spin hamiltonian to tridiagonalize
   max_size: int
     The maximum size of the Lanczos basis
+  reortho: bool
+    Whether to explicitly reorthogonalize each Lanczos vector to prevent degeneracy. Significantly increases computation time!
   """
+  st = mt.perf_counter() # Function start time
+
   N = len(H) # Get system size from hamiltonian
   phi = [] # List of normalized Lanczos vectors
   norm = [] # List of Lanczos vector norms
   a = [] # List of Lanczos a coefficients
   seed = 42
   compact_H = save_nonzero(H)
+  mt.timeprint(st, "Compact hamiltonian saved")
 
   """Initialize algorithm"""
   new_phi, new_norm = normalize(default_rng(seed).random(N)) # phi0 is a random normalized vector
@@ -91,6 +98,7 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
   norm.append(new_norm)
   latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
   a.append(phi[0] @ latest_Hphi)
+  mt.timeprint(st, "Lanczos initialized, basis size 1")
 
   """Special case new = 1"""
   unnorm_new_phi = latest_Hphi - a[0]*phi[0]
@@ -107,11 +115,21 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
     latest_Hphi = spinH_action(phi[m-1], compact_H[0], compact_H[1], compact_H[2])
     unnorm_new_phi = latest_Hphi - a[m-1]*phi[m-1] - norm[m-1]*phi[m-2]
     new_phi, new_norm = normalize(unnorm_new_phi)
+
+    """Ensure orthogonality""" # Comment out for slight performance improvements over reortho = False
+    if reortho:
+      for i in range(0,m):
+        q = phi[i] @ new_phi
+        new_phi = (new_phi - q*phi[i])/(1-q*q)
+
+    new_phi, new_norm = normalize(unnorm_new_phi)
     phi.append(new_phi)
     norm.append(new_norm)
     latest_Hphi = spinH_action(phi[m], compact_H[0], compact_H[1], compact_H[2]) 
     a.append(phi[m] @ latest_Hphi)
+    if len(phi) % 500 == 0: mt.timeprint(st, f"Lanczos basis size {len(phi)}")
 
+  mt.timeprint(st, "Lanczos basis built")
   H_tridiag = np.zeros((tridiag_size, tridiag_size))
   H_tridiag[0,0] = a[0]
   H_tridiag[1, 0] = norm[1]
@@ -121,7 +139,10 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000):
     H_tridiag[m+1, m] = norm[m+1]
   H_tridiag[tridiag_size-2, tridiag_size-1] = norm[tridiag_size-1]
   H_tridiag[tridiag_size-1,tridiag_size-1] = a[tridiag_size-1]
+  mt.timeprint(st, "Tridiagonal matrix built")
   return H_tridiag
+
+
 
 def test_spinH_action(H, compact_H):
   print(f'Hamiltonian is \n{H}')
