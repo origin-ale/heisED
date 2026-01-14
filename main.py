@@ -2,11 +2,11 @@ import numpy as np
 from scipy.linalg import eigh_tridiagonal
 
 from build_hamiltonian import build_hamiltonian
-from lanczos import spinH_lanczos
+from lanczos import spinH_lanczos, spinH_lanczos_gs
 from file_output import grounds_to_file
 import mytiming as mt
 
-J = 1.
+J = .5
 L = 1
 
 iter_duration = 0. # How long the last iteration lasted
@@ -24,14 +24,15 @@ while(iter_duration < max_duration):
   print(16*'=' + f" L = {L} " + 16*'=')
   H = build_hamiltonian(L, J)
 
-  tridiag = spinH_lanczos(H)
+  # tridiag = spinH_lanczos(H)
+  # gs_energy = eigh_tridiagonal(tridiag.diagonal(), 
+  #                             tridiag.diagonal(offset=1), 
+  #                             eigvals_only=True, 
+  #                             select='i', 
+  #                             select_range=[0,0])
+  # gs = gs_energy[0]
+  gs = spinH_lanczos_gs(H)
 
-  gs_energy = eigh_tridiagonal(tridiag.diagonal(), 
-                              tridiag.diagonal(offset=1), 
-                              eigvals_only=True, 
-                              select='i', 
-                              select_range=[0,0])
-  gs = gs_energy[0]
   print(f'{L} spins with PBCs, J={J}:\n\tE0 {gs:.7f}\n\tE0/L {gs/L:.7f}')
 
   iter_end = mt.perf_counter()
