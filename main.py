@@ -6,11 +6,11 @@ from lanczos import spinH_lanczos, spinH_lanczos_gs
 from file_output import grounds_to_file
 import mytiming as mt
 
-J = .5
+J = 1.
 L = 1
 
-iter_duration = 0. # How long the last iteration lasted
-max_duration = 300 # Maximum time for an iteration before program is set to stop, in seconds
+iter_duration = 0. # How long the previous iteration lasted
+max_duration = 5 # Maximum time for an iteration before program is set to stop, in seconds
 
 lengths = []
 energies = []
@@ -24,19 +24,12 @@ while(iter_duration < max_duration):
   print(16*'=' + f" L = {L} " + 16*'=')
   H = build_hamiltonian(L, J)
 
-  # tridiag = spinH_lanczos(H)
-  # gs_energy = eigh_tridiagonal(tridiag.diagonal(), 
-  #                             tridiag.diagonal(offset=1), 
-  #                             eigvals_only=True, 
-  #                             select='i', 
-  #                             select_range=[0,0])
-  # gs = gs_energy[0]
   gs = spinH_lanczos_gs(H)
-
-  print(f'{L} spins with PBCs, J={J}:\n\tE0 {gs:.7f}\n\tE0/L {gs/L:.7f}')
 
   iter_end = mt.perf_counter()
   iter_duration = iter_end - iter_start
+
+  print(f'{L} spins with PBCs, J={J}:\n\tE0 {gs:.7f}\n\tE0/L {gs/L:.7f}\nIteration took {iter_duration:.3f} s')
 
   lengths.append(L)
   energies.append(gs)

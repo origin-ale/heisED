@@ -1,4 +1,5 @@
 import numpy as np
+import mytiming as mt
 
 def get_bit(n: int, i: int):
   """
@@ -23,6 +24,7 @@ def build_hamiltonian(N: int, J: float):
   J : float
     The coupling constant for spin-spin interactions.
   """
+  st = mt.perf_counter()
   state_n = 2**N
   H = np.zeros((state_n, state_n))
   for s in range(0, state_n):
@@ -34,5 +36,7 @@ def build_hamiltonian(N: int, J: float):
         H[s,s] += -.25
         sp = flip_bits(s,i,j)
         H[s,sp] = .5
-  return H
+    if s%5000 == 0: mt.timeprint(st, f"H building {(s/state_n * 100):.2f}% done")
+  mt.timeprint(st, f"H building done!")
+  return J*H
 

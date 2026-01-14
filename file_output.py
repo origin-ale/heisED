@@ -15,7 +15,7 @@ def grounds_to_file(lengths, energies, en_lens, durations, J):
     J: float
       The magnetic field. Used as filename and saved in header
   """
-  filename = f"J{J:.5f}.txt"
+  filename = f"output/J{J:.5f}.txt"
   
   with open(filename, 'w') as f:
     f.write(f"Heisenberg model lengths, energies, E/L and time to diagonalize (s) in J={J}\n")

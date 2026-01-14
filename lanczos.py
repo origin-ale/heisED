@@ -27,6 +27,7 @@ def save_nonzero(H: np.ndarray):
   nze_values : list of float
     The nonzero elements themselves
   """
+  st = mt.perf_counter()
   N = len(H)
   nonzero_elements = [] # Number of nonzero elements in each row
   nze_locations = [] # Locations of nonzero elements in each row
@@ -39,6 +40,8 @@ def save_nonzero(H: np.ndarray):
         nze_locations.append(b)
         nze_values.append(float(H[a,b])) # Convert from np.float64 for nicer printing in debug
     nonzero_elements.append(nze_a)
+    if a%1000 == 0: mt.timeprint(st, f"H compression {(a/N * 100):.2f}% done")
+  mt.timeprint(st, f"H compression done!")
   return nonzero_elements, nze_locations, nze_values
 
 def spinH_action(psi: np.ndarray, nonzero_elements: list, nze_locations: list, nze_values: list):
@@ -155,7 +158,6 @@ def spinH_lanczos_gs(H: np.ndarray, tol = 1e-7, reortho = False):
   reortho: bool
     Whether to explicitly reorthogonalize each Lanczos vector to prevent degeneracy. Significantly increases computation time!
   """
-  st = mt.perf_counter() # Function start time
 
   N = len(H) # Get system size from hamiltonian
   phi = [] # List of normalized Lanczos vectors
@@ -163,15 +165,15 @@ def spinH_lanczos_gs(H: np.ndarray, tol = 1e-7, reortho = False):
   a = [] # List of Lanczos a coefficients
   seed = 42
   compact_H = save_nonzero(H)
+
   delta_gs = np.inf
   prev_gs = 0.
   
   lH_diag = []
   lH_odiag = []
 
-  mt.timeprint(st, "Compact hamiltonian saved")
-
   """Initialize algorithm"""
+  st = mt.perf_counter() # Lanczos start time
   m = 0
   new_phi, new_norm = normalize(default_rng(seed).random(N)) # phi0 is a random normalized vector
   phi.append(new_phi)
@@ -179,7 +181,7 @@ def spinH_lanczos_gs(H: np.ndarray, tol = 1e-7, reortho = False):
   latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
   a.append(phi[0] @ latest_Hphi)
   lH_diag.append(a[0])
-  mt.timeprint(st, "Lanczos initialized, basis size 1")
+  mt.timeprint(st, f"Lanczos initialized, convergence at delta = {tol}")
 
   """Special case new = 1"""
   m = 1
@@ -216,8 +218,6 @@ def spinH_lanczos_gs(H: np.ndarray, tol = 1e-7, reortho = False):
     lH_diag.append(a[m])
     lH_odiag.append(norm[m])
 
-    if len(phi) % 50 == 0: mt.timeprint(st, f"Lanczos basis size {len(phi)}")
-
     gs_energy = eigh_tridiagonal(lH_diag, 
                               lH_odiag, 
                               eigvals_only=True, 
@@ -228,7 +228,8 @@ def spinH_lanczos_gs(H: np.ndarray, tol = 1e-7, reortho = False):
     delta_gs = abs(prev_gs - gs)
     prev_gs = gs
     m += 1
-  mt.timeprint(st, f"Lanczos basis built with {m} elements")
+    if m%10 == 0: mt.timeprint(st, f"{m} Lanczos vectors give delta = {delta_gs}")
+  mt.timeprint(st, f"Convergence reached with {m} Lanczos vectors!")
   return gs
 
 

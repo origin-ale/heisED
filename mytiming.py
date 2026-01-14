@@ -8,7 +8,7 @@ def perf_counter():
 
 def timeprint(start_time, string):
   """
-  Print string preceded by time elapsed since start
+  Print string preceded by time elapsed since given start time (returned by `time.perf_counter()`)
   """
-  print(f'{time.perf_counter() - start_time:.3f}: ' + string)
+  print(string + f' ({time.perf_counter() - start_time:.3f} s from start)')
   return
