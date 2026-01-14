@@ -7,10 +7,10 @@ from file_output import grounds_to_file
 import mytiming as mt
 
 J = 1.
-L = 1
+L = 2
 
 iter_duration = 0. # How long the previous iteration lasted
-max_duration = 5 # Maximum time for an iteration before program is set to stop, in seconds
+max_duration = 2 # Maximum time for an iteration before program is set to stop, in seconds
 
 lengths = []
 energies = []
@@ -36,7 +36,7 @@ while(iter_duration < max_duration):
   en_lens.append(gs/L)
   durations.append(iter_duration)
 
-  L += 1
+  L += 2 # Only use even site numbers to avoid oscillations
 
 print(16*'=' + f" Maximum duration {max_duration} s passed at L = {L-1} " + 16*'=')
 grounds_to_file(lengths, energies, en_lens, durations, J)
