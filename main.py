@@ -10,7 +10,7 @@ J = 1.
 L = 2
 
 iter_duration = 0. # How long the previous iteration lasted
-max_duration = 2 # Maximum time for an iteration before program is set to stop, in seconds
+max_duration = 1800 # Maximum time for an iteration before program is set to stop, in seconds
 
 lengths = []
 energies = []
@@ -35,8 +35,8 @@ while(iter_duration < max_duration):
   energies.append(gs)
   en_lens.append(gs/L)
   durations.append(iter_duration)
+  grounds_to_file(lengths, energies, en_lens, durations, J)
 
   L += 2 # Only use even site numbers to avoid oscillations
 
 print(16*'=' + f" Maximum duration {max_duration} s passed at L = {L-1} " + 16*'=')
-grounds_to_file(lengths, energies, en_lens, durations, J)
