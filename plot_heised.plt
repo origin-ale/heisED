@@ -10,7 +10,7 @@ set style data linespoints
 
 set pointsize 2
 
-set xlabel "N"
+set xlabel "L"
 set xrange [0:20]
 
 set key on font ",28" box height 1 width .5
