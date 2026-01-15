@@ -145,6 +145,97 @@ def spinH_lanczos(H: np.ndarray, max_size = 100000, reortho = False):
   mt.timeprint(st, "Tridiagonal matrix built")
   return H_tridiag
 
+def spinH_compr_lanczos_gs(compact_H: list, L: int, tol = 1e-7, reortho = False):
+  """
+  Get the ground state of a spin hamiltonian using the Lanczos algorithm, only using as many basis vectors as necessary (Sandvik 2010 §4.2.3)
+
+  Parameters
+  ---
+  N: int
+    The size of the spin system
+  compact_H: list
+    The spin hamiltonian to tridiagonalize, in compact form as a list of 3 lists:
+    -   nonzero_elements: The number of nonzero elements in each row of the hamiltonian
+    - nze_locations: The locations of nonzero elements in each row. First `nonzero_elements[0]` entries refer to row `0`, and so on
+    - nze_values: The nonzero elements themselves
+  tol: float
+    The tolerance for the GS to be considered converged
+  reortho: bool
+    Whether to explicitly reorthogonalize each Lanczos vector to prevent degeneracy. Significantly increases computation time!
+  """
+  N = 2**L
+
+  phi = [] # List of normalized Lanczos vectors
+  norm = [] # List of Lanczos vector norms
+  a = [] # List of Lanczos a coefficients
+  seed = 42
+
+  delta_gs = np.inf
+  prev_gs = 0.
+  
+  lH_diag = []
+  lH_odiag = []
+
+  """Initialize algorithm"""
+  st = mt.perf_counter() # Lanczos start time
+  m = 0
+  new_phi, new_norm = normalize(default_rng(seed).random(N)) # phi0 is a random normalized vector
+  phi.append(new_phi)
+  norm.append(new_norm)
+  latest_Hphi = spinH_action(phi[0], compact_H[0], compact_H[1], compact_H[2])
+  a.append(phi[0] @ latest_Hphi)
+  lH_diag.append(a[0])
+  mt.timeprint(st, f"Lanczos initialized, convergence at delta = {tol}")
+
+  """Special case new = 1"""
+  m = 1
+  unnorm_new_phi = latest_Hphi - a[0]*phi[0]
+  new_phi, new_norm = normalize(unnorm_new_phi)
+  phi.append(new_phi)
+  norm.append(new_norm)
+  latest_Hphi = spinH_action(phi[1], compact_H[0], compact_H[1], compact_H[2]) 
+  # this is technically a waste but it lets the loop start with 2 elements in everything 
+  a.append(phi[1] @ latest_Hphi)
+
+  lH_diag.append(a[1])
+  lH_odiag.append(norm[1])
+
+  """Main loop 2 <= new <= size-1"""
+  m = 2
+  while delta_gs > tol:
+    latest_Hphi = spinH_action(phi[m-1], compact_H[0], compact_H[1], compact_H[2])
+    unnorm_new_phi = latest_Hphi - a[m-1]*phi[m-1] - norm[m-1]*phi[m-2]
+    new_phi, new_norm = normalize(unnorm_new_phi)
+
+    """Ensure orthogonality""" # Comment out for slight performance improvements over reortho = False
+    if reortho:
+      for i in range(0,m):
+        q = phi[i] @ new_phi
+        new_phi = (new_phi - q*phi[i])/(1-q*q)
+
+    new_phi, new_norm = normalize(unnorm_new_phi)
+    phi.append(new_phi)
+    norm.append(new_norm)
+    latest_Hphi = spinH_action(phi[m], compact_H[0], compact_H[1], compact_H[2]) 
+    a.append(phi[m] @ latest_Hphi)
+   
+    lH_diag.append(a[m])
+    lH_odiag.append(norm[m])
+
+    gs_energy = eigh_tridiagonal(lH_diag, 
+                              lH_odiag, 
+                              eigvals_only=True, 
+                              select='i', 
+                              select_range=[0,0])
+    gs = gs_energy[0]
+
+    delta_gs = abs(prev_gs - gs)
+    prev_gs = gs
+    m += 1
+    if m%10 == 0: mt.timeprint(st, f"{m} Lanczos vectors give delta = {delta_gs}")
+  mt.timeprint(st, f"Convergence reached with {m} Lanczos vectors!")
+  return gs
+
 def spinH_lanczos_gs(H: np.ndarray, tol = 1e-7, reortho = False):
   """
   Get the ground state of a spin hamiltonian using the Lanczos algorithm, only using as many basis vectors as necessary (Sandvik 2010 §4.2.3)
